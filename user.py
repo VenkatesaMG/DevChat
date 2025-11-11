@@ -6,13 +6,23 @@ import shutil
 
 user_host = '127.0.0.1'
 user_port = 0
-cmd_branch = "├─"
-cmd_end = "└─"
-cmd_pipe = "│"
 developers = {}
 user_name = ""
 console = Console()
 terminal_width = shutil.get_terminal_size().columns
+
+async def run_command(cmd):
+    proc = await asyncio.create_subprocess_shell(
+        cmd,
+        stdin=asyncio.subprocess.PIPE,
+        stdout=asyncio.subprocess.PIPE
+    )
+
+    stdout, stderr = await proc.communicate()
+    if stdout:
+        print(f"[stdout]\n{stdout.decode()}")
+    elif stderr:
+        print(f"[stderr]\n{stderr.decode()}")
 
 async def broadcast(msg):
     for nickname, (_, writer) in developers.items():
@@ -21,7 +31,7 @@ async def broadcast(msg):
 
 def custom_print(nickname, msg):
     formatted = f"[cyan]{nickname}[/cyan]\n {msg}"
-    console.print(Align(formatted, justify='right', width=terminal_width - 4))
+    console.print(formatted, justify="right")
 
 async def read_peer(nickname, reader):
     """Continuously read messages from a connected peer."""
@@ -54,7 +64,7 @@ async def user_input():
 
     while True:
         user_msg = await loop.run_in_executor(None, input)
-        print("\033[F\033[K\033[F\033[K", end="")  # clear the prompt
+        print("\033[K\033[F\033[K", end="")  # clear the prompt
         nickname, _, msg = user_msg.partition(' ')
         msg += '\n'
         if nickname == '@broadcast':
@@ -64,6 +74,10 @@ async def user_input():
             console.print(f"[yellow]{user_name}[/yellow]\n [#39418f]{nickname}[/#39418f] {msg}")
             dev_host, dev_port = msg.strip().split()
             await connect(dev_host, int(dev_port))
+        elif nickname == '@term':
+            console.print(f"[yellow]{user_name}[/yellow]\n [#39418f]{nickname}[/#39418f] {msg}")
+            msg = msg.strip()
+            await asyncio.create_task(run_command(msg))
         elif nickname in developers:
             console.print(f"[yellow]{user_name}[/yellow]\n @[cyan]{nickname}[/cyan] {msg}")
             _, writer = developers[nickname]
@@ -79,7 +93,7 @@ async def handle_developer(reader, writer):
     nickname = await reader.readline()
     nickname = nickname.decode('utf-8').strip()
     developers[nickname] = (reader, writer)
-    print(f"Connected to {nickname} from {addr}\n{cmd_pipe}  ")
+    console.print(f"[black on #00fd4c] Connected [/] {nickname}")
 
     # Send back our username for identification
     writer.write(f"{user_name}\n".encode('utf-8'))
@@ -95,11 +109,10 @@ async def handle_developer(reader, writer):
     except ConnectionResetError:
         pass
     finally:
-        console.print(f"[\black on #e9535d]Disconnected[\black on #e9535d] {nickname}")
+        console.print(f"[black on #e9535d]Disconnected[/black on #e9535d] {nickname}")
         del developers[nickname]
         writer.close()
         await writer.wait_closed()
-
 
 async def main():
     global user_name
