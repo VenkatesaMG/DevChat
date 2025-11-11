@@ -1,0 +1,3 @@
+https://realpython.com/async-io-python/ # Asyncio
+https://medium.com/vaidikkapoor/understanding-non-blocking-i-o-with-python-part-1-ec31a2e2db9b # Non Blocking I/O and event loops
+https://realpython.com/python-sockets/#historical-background # Socket Programming
